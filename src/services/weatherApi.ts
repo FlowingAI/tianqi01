@@ -5,7 +5,38 @@ import type { WeatherData, WeatherTheme, City, CacheData } from '../types/weathe
 // OpenWeatherMap API (免费、稳定、无需认证)
 const OPENWEATHER_APP_ID = '0b975a528eb8ece8ab99ba16e24b320e';
 
+// 模拟数据模式（从环境变量读取）
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+
+// 模拟天气数据
+const MOCK_WEATHER_DATA: Record<City, WeatherData> = {
+  beijing: {
+    temp: 22,
+    humidity: 45,
+    windSpeed: 12,
+    condition: '晴',
+    theme: 'sunny',
+    lastUpdated: Date.now(),
+  },
+  shanghai: {
+    temp: 26,
+    humidity: 78,
+    windSpeed: 18,
+    condition: '小雨',
+    theme: 'rainy',
+    lastUpdated: Date.now(),
+  },
+  shenzhen: {
+    temp: 30,
+    humidity: 82,
+    windSpeed: 8,
+    condition: '多云',
+    theme: 'sunny',
+    lastUpdated: Date.now(),
+  },
+};
 
 // 城市名称到 OpenWeatherMap 城市名的映射
 const CITY_NAME_MAP: Record<City, string> = {
@@ -87,6 +118,13 @@ class WeatherApiService {
   }
 
   async fetchWeather(city: City): Promise<WeatherData> {
+    // 模拟数据模式：直接返回预设数据
+    if (USE_MOCK_DATA) {
+      // 模拟网络延迟，让 UI 显示加载动画
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return MOCK_WEATHER_DATA[city];
+    }
+
     const cached = this.getCachedData(city);
     if (cached) {
       return cached;
