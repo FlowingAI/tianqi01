@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import type { WeatherData, WeatherTheme, City, CacheData } from '../types/weather';
 
-const API_BASE_URL = 'https://devapi.qweather.com/v7';
+const API_BASE_URL = 'https://api.qweather.com/v7';
 const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || '';
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
