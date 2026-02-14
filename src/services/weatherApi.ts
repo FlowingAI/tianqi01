@@ -3,7 +3,7 @@ import type { AxiosInstance } from 'axios';
 import type { WeatherData, WeatherTheme, City, CacheData } from '../types/weather';
 
 // OpenWeatherMap API (免费、稳定、无需认证)
-const OPENWEATHER_APP_ID = 'YOUR_OPENWEATHER_APP_ID'; // 需要替换
+const OPENWEATHER_APP_ID = 'YOUR_OPENWEATHER_APP_ID';
 
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
@@ -14,17 +14,17 @@ const CITY_NAME_MAP: Record<City, string> = {
   shenzhen: 'Shenzhen',
 };
 
-// OpenWeatherMap 天气代码映射
+// OpenWeatherMap 天气代码映射 (使用weather[0].icon字段)
 const WEATHER_CODE_MAP: Record<string, string> = {
   '01d': '晴',
   '02d': '多云',
   '03d': '阴',
-  '04d': '雷阵雨',
+  '04d': '阴',
   '09d': '小雨',
   '10d': '中雨',
-  '11d': '大雨',
+  '11d': '雷阵雨',
   '13d': '小雪',
-  '50d': '晴',
+  '50d': '雾',
 };
 
 // Cache storage
@@ -40,16 +40,10 @@ class WeatherApiService {
     });
   }
 
-  /**
-   * Get cache key for a city
-   */
   private getCacheKey(city: City): string {
     return `weather_${city}`;
   }
 
-  /**
-   * Get cached weather data if valid
-   */
   private getCachedData(city: City): WeatherData | null {
     const cached = cache.get(this.getCacheKey(city));
     if (!cached) return null;
@@ -63,9 +57,6 @@ class WeatherApiService {
     return cached.data;
   }
 
-  /**
-   * Set cached weather data
-   */
   private setCachedData(city: City, data: WeatherData): void {
     cache.set(this.getCacheKey(city), {
       data,
@@ -73,43 +64,29 @@ class WeatherApiService {
     });
   }
 
-  /**
-   * Map weather code to theme
-   */
-  private mapWeatherTheme(code: string): WeatherTheme {
-    const codeNum = parseInt(code.substring(0, 2));
+  private mapWeatherCodeToTheme(iconCode: string): WeatherTheme {
+    // OpenWeatherMap icon codes: https://openweathermap.org/weather-conditions
+    const code = iconCode.slice(0, 2); // 取前两位数字
 
-    // 01d-09d: 白天
-    if (codeNum >= 1 && codeNum <= 9) return 'sunny';
+    // 01-02: 晴天/少云
+    if (code === '01' || code === '02') return 'sunny';
+    // 03-04: 多云/阴
+    if (code === '03' || code === '04') return 'sunny';
+    // 09-11: 雨阵雨
+    if (code >= '09' && code <= '11') return 'rainy';
+    // 13: 雪
+    if (code === '13') return 'snowy';
+    // 50: 雾
+    if (code === '50') return 'windy';
 
-    // 10d-19d: 多云/阴
-    if (codeNum >= 10 && codeNum <= 19) return 'sunny';
-
-    // 20d-29d: 雨阵雨/小雨
-    if (codeNum >= 20 && codeNum <= 29) return 'rainy';
-
-    // 30d-39d: 小雪
-    if (codeNum >= 30 && codeNum <= 39) return 'snowy';
-
-    // 50d: 晴天
-    if (codeNum >= 50 && codeNum <= 50) return 'sunny';
-
-    return 'sunny';
+    return 'sunny'; // default
   }
 
-  /**
-   * Map weather description to condition text
-   */
-  private mapWeatherCondition(code: string): string {
-    const condition = WEATHER_CODE_MAP[code] || '晴';
-    return condition;
+  private mapWeatherCondition(iconCode: string): string {
+    return WEATHER_CODE_MAP[iconCode] || '晴';
   }
 
-  /**
-   * Fetch weather data for a city using OpenWeatherMap
-   */
   async fetchWeather(city: City): Promise<WeatherData> {
-    // Check cache first
     const cached = this.getCachedData(city);
     if (cached) {
       return cached;
@@ -118,8 +95,7 @@ class WeatherApiService {
     try {
       const cityName = CITY_NAME_MAP[city];
 
-      // 调用 OpenWeatherMap API
-      const response = await this.client.get('', {
+      const response = await this.client.get('/weather', {
         params: {
           q: cityName,
           appid: OPENWEATHER_APP_ID,
@@ -127,47 +103,41 @@ class WeatherApiService {
         },
       });
 
-      const { data } = response;
-
-      if (!data || !data.list || data.list.length === 0) {
+      if (response.status !== 200 || !response.data) {
         throw new Error('获取天气数据失败');
       }
 
-      const weatherData = data.list[0];
+      const apiData = response.data;
+
+      if (apiData.cod !== 200) {
+        throw new Error('获取天气数据失败');
+      }
+
+      const weather = apiData.weather[0];
+      const iconCode = weather.icon;
 
       const weatherData: WeatherData = {
-        temp: Math.round(weatherData.main.temp),
-        humidity: weatherData.main.humidity || 0,
-        windSpeed: Math.round((weatherData.wind?.speed || 0) * 3.6),
-        condition: this.mapWeatherCondition(weatherData.weather[0].description),
-        theme: this.mapWeatherTheme(weatherData.weather[0].icon),
+        temp: Math.round(apiData.main.temp),
+        humidity: apiData.main.humidity || 0,
+        windSpeed: Math.round(apiData.wind?.speed || 0),
+        condition: this.mapWeatherCondition(iconCode),
+        theme: this.mapWeatherCodeToTheme(iconCode),
         lastUpdated: Date.now(),
       };
 
-      // Cache the data
       this.setCachedData(city, weatherData);
       return weatherData;
-
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 429) {
-          throw new Error('API 请求过于频繁，请稍后再试');
-        }
-        if (error.response?.status === 401) {
-          throw new Error('API Key 无效，请检查配置');
-        }
+        throw new Error('获取天气数据失败');
       }
-      throw new Error('获取天气数据失败，请检查网络连接');
+      throw error;
     }
   }
 
-  /**
-   * Clear all cached data
-   */
   clearCache(): void {
     cache.clear();
   }
 }
 
-// Export singleton instance
 export const weatherApi = new WeatherApiService();
