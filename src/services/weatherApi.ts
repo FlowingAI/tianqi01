@@ -3,7 +3,7 @@ import type { AxiosInstance } from 'axios';
 import type { WeatherData, WeatherTheme, City, CacheData } from '../types/weather';
 
 // OpenWeatherMap API (免费、稳定、无需认证)
-const OPENWEATHER_APP_ID = 'YOUR_OPENWEATHER_APP_ID';
+const OPENWEATHER_APP_ID = '0b975a528eb8ece8ab99ba16e24b320e';
 
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
