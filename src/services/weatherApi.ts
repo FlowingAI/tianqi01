@@ -4,6 +4,7 @@ import type { WeatherData, WeatherTheme, City, CacheData } from '../types/weathe
 
 const API_BASE_URL = 'https://api.qweather.com/v7';
 const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || '';
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
 // City location IDs
