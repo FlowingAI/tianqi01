@@ -23,6 +23,9 @@ class WeatherApiService {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+      },
     });
   }
 
@@ -81,12 +84,7 @@ class WeatherApiService {
 
     try {
       const locationId = CITY_LOCATION_IDS[city];
-      const response = await this.client.get(`/weather/now`, {
-        params: {
-          location: locationId,
-          key: API_KEY,
-        },
-      });
+      const response = await this.client.get(`/weather/now?location=${locationId}`);
 
       const { now } = response.data;
       const weatherData: WeatherData = {
