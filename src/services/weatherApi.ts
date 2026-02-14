@@ -76,6 +76,21 @@ class WeatherApiService {
    * Fetch weather data for a city
    */
   async fetchWeather(city: City): Promise<WeatherData> {
+    // 临时模拟数据模式（用于测试 UI，跳过 API 调用）
+    if (USE_MOCK_DATA) {
+      console.log('🎭 使用模拟数据模式');
+      const mockData: WeatherData = {
+        temp: 22,
+        humidity: 45,
+        windSpeed: 12,
+        condition: '晴',
+        theme: 'sunny',
+        lastUpdated: Date.now(),
+      };
+      this.setCachedData(city, mockData);
+      return mockData;
+    }
+
     // Check cache first
     const cached = this.getCachedData(city);
     if (cached) {
